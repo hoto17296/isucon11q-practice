@@ -21,6 +21,8 @@ import mysql.connector
 from sqlalchemy.pool import QueuePool
 import jwt
 
+import flask_profiler
+
 
 TZ = ZoneInfo("Asia/Tokyo")
 CONDITION_LIMIT = 20
@@ -753,7 +755,7 @@ def post_isu_condition(jia_isu_uuid):
         query = f"""
             INSERT
             INTO `isu_condition` (`jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`)
-            VALUES {"(%s, %s, %s, %s, %s)" * len(req)}
+            VALUES {",".join(["(%s, %s, %s, %s, %s)"] * len(req))}
             """
         values = []
 
@@ -836,4 +838,14 @@ def is_valid_condition_format(condition_str: str) -> bool:
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=getenv("SERVER_APP_PORT", 3000), threaded=True)
+    profile = bool(getenv("PROFILE"))
+    if profile:
+        app.config["flask_profiler"] = {
+            "enabled": True,
+            "storage": {
+                "engine": "sqlite"
+            },
+        }
+        flask_profiler.init_app(app)
+
+    app.run(host="0.0.0.0", port=getenv("SERVER_APP_PORT", 3000), threaded=not profile)
